@@ -38,3 +38,49 @@ def dato_a_id(text:str, max_len:int) -> list[int]:
 
 X_data = [dato_a_id(frase) for frase, _ in corpus]
 Y_data = [label for _, label in corpus]
+
+X_tensor = torch.tensor(X_data, dtype=torch.long)
+Y_tensor = torch.tensor(Y_data, dtype=torch.int16)
+
+
+class TextDataset(Dataset):
+    def __init__(self, X, y):
+        self.X= X
+        self.y=y
+
+    def __len__(self):
+        return self.X
+
+    def __getitem__(self, index):
+        return self.X[index], self.y[index]
+
+
+loader = DataLoader(TextDataset(X_tensor, Y_tensor), batch_size=2, shuffle=True)
+
+class SentimentRNN(nn.Module):
+    def __init__(self, vocab_size, embed_dim=8, hidden_dim=16):
+        super.__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=1)
+        self.rc= nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid()
+
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        out_seq, h_n = self.rnn(embedded)
+        out = self.fc(h_n.squeezed(0))
+        return self.sigmoid(out)
+
+model = SentimentRNN(vocab_size)
+criterio = nn.BCELoss()
+optimizer= torch.optim.Adam(model.parameters(), lr=0.01)
+
+for epoch in range(1, 51):
+     total_loss=0.0
+     for batch_x, batch_y in loader:
+         optimizer.zero_grad()
+         preds=model(batch_x).squeeze(1)
+         loss= criterio(preds, batch_y)
+         loss.backward()
+         optimizer.step()
+         total_loss+=loss.item()
