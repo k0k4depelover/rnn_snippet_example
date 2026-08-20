@@ -17,13 +17,15 @@ corpus = [
     ("me llego roto, pesimo", 0)
 ]
 
+
+
 palabras = set()
 for frase, _ in corpus:
     palabras.update(frase.split())
 
 vocab = {palabra: i+2 for i, palabra in enumerate(sorted(list(palabras)))}
 
-vocab['PAD'] =1
+vocab['<PAD>'] =1
 vocab['<UNK>'] = 0
 
 vocab_size = len(vocab)
@@ -32,11 +34,11 @@ max_len = 6
 def dato_a_id(text:str, max_len:int) -> list[int]:
     tokens = [vocab.get(p, vocab["<UNK>"]) for p in text.split()[:max_len]]
     if len(tokens) < max_len:
-        tokens += vocab['UNK'] * (max_len - len(tokens))
+        tokens += [vocab['<UNK>']] * (max_len - len(tokens))
     return tokens[:max_len] 
 
 
-X_data = [dato_a_id(frase) for frase, _ in corpus]
+X_data = [dato_a_id(frase, max_len) for frase, _ in corpus]
 Y_data = [label for _, label in corpus]
 
 X_tensor = torch.tensor(X_data, dtype=torch.long)
@@ -71,16 +73,41 @@ class SentimentRNN(nn.Module):
         out = self.fc(h_n.squeezed(0))
         return self.sigmoid(out)
 
-model = SentimentRNN(vocab_size)
+
+
+
+if torch.cuda.is_available():
+    # Instanciar objeto en GPU
+    # Utilizar CUDA para procesamiento paralelo en GPU
+    device = torch.device("cuda")
+    model = SentimentRNN(vocab_size).to(device)
+else:
+    model = SentimentRNN(vocab_size)
+
+
 criterio = nn.BCELoss()
 optimizer= torch.optim.Adam(model.parameters(), lr=0.01)
 
 for epoch in range(1, 51):
      total_loss=0.0
      for batch_x, batch_y in loader:
+         batch_x = batch_x.to(device)
+         batch_y = batch_y.to(device)
+
+
          optimizer.zero_grad()
          preds=model(batch_x).squeeze(1)
          loss= criterio(preds, batch_y)
          loss.backward()
          optimizer.step()
          total_loss+=loss.item()
+
+def predecir(frase:str): 
+    model.eval()
+    with torch.no_grad():
+        ids = torch.tensor( [dato_a_id(frase, max_len)], dtype=torch.long )
+        prob = model(ids).item()
+        sentimiento = "Positivo" if prob > 0.5 else "Negativo"
+        print(f"frase con sentimiento {sentimiento}")
+
+predecir("muy excelente")
