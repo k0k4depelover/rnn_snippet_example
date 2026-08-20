@@ -16,7 +16,9 @@ corpus = [
     ("muy rapido y excelente", 1),
     ("me llego roto, pesimo", 0),
     ("muy excelente", 1),
-    ("me la pase bien", 1)
+    ("me la pase bien", 1),
+    ("positivo", 1)
+    ("nagativo", 0)
 ]
 
 
@@ -113,4 +115,4 @@ def predecir(frase:str):
         sentimiento = "Positivo" if prob > 0.5 else "Negativo"
         print(f"frase con sentimiento {sentimiento}")
 
-predecir("encantado y feliz")
+predecir("positivo")
