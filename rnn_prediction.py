@@ -13,8 +13,10 @@ corpus = [
     ("excelente", 1),
     ("muy mala comida", 0),
     ("comida fea", 0),
-    ("muy rapido y excelente", 0),
-    ("me llego roto, pesimo", 0)
+    ("muy rapido y excelente", 1),
+    ("me llego roto, pesimo", 0),
+    ("muy excelente", 1),
+    ("me la pase bien", 1)
 ]
 
 
@@ -42,7 +44,7 @@ X_data = [dato_a_id(frase, max_len) for frase, _ in corpus]
 Y_data = [label for _, label in corpus]
 
 X_tensor = torch.tensor(X_data, dtype=torch.long)
-Y_tensor = torch.tensor(Y_data, dtype=torch.int16)
+Y_tensor = torch.tensor(Y_data, dtype=torch.float32)
 
 
 class TextDataset(Dataset):
@@ -51,7 +53,7 @@ class TextDataset(Dataset):
         self.y=y
 
     def __len__(self):
-        return self.X
+        return len(self.X)
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
@@ -61,8 +63,9 @@ loader = DataLoader(TextDataset(X_tensor, Y_tensor), batch_size=2, shuffle=True)
 
 class SentimentRNN(nn.Module):
     def __init__(self, vocab_size, embed_dim=8, hidden_dim=16):
-        super.__init__()
+        super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=1)
+        self.rnn = nn.RNN(embed_dim, hidden_dim, batch_first=True)
         self.rc= nn.Linear(hidden_dim, 1)
         self.sigmoid = nn.Sigmoid()
 
@@ -70,7 +73,7 @@ class SentimentRNN(nn.Module):
     def forward(self, x):
         embedded = self.embedding(x)
         out_seq, h_n = self.rnn(embedded)
-        out = self.fc(h_n.squeezed(0))
+        out = self.rc(h_n.squeeze(0))
         return self.sigmoid(out)
 
 
@@ -105,9 +108,9 @@ for epoch in range(1, 51):
 def predecir(frase:str): 
     model.eval()
     with torch.no_grad():
-        ids = torch.tensor( [dato_a_id(frase, max_len)], dtype=torch.long )
+        ids = torch.tensor( [dato_a_id(frase, max_len)], dtype=torch.long).to(device)
         prob = model(ids).item()
         sentimiento = "Positivo" if prob > 0.5 else "Negativo"
         print(f"frase con sentimiento {sentimiento}")
 
-predecir("muy excelente")
+predecir("encantado y feliz")
